@@ -8,13 +8,38 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/Praveensenpai/kikoe)
 [![License](https://img.shields.io/badge/License-MIT-a6e3a1?style=for-the-badge)](LICENSE)
 
-[⚡ Quick Install](#-quick-start) • [✨ Key Features](#-key-features) • [🔄 Architecture](#-architecture--sampling-workflow) • [💻 CLI Usage](#-cli-usage--workflows) • [📜 License](#-license)
+[⚡ Quick Install](#-quick-start) • [🎯 Why kikoe?](#-why-kikoe-the-purpose) • [✨ Key Features](#-key-features) • [🔄 Architecture](#-architecture--sampling-workflow) • [💻 CLI Usage](#-cli-usage--workflows) • [📜 License](#-license)
 
 > [!TIP]
 > **Zero Tag Reliance · 100% Raw Acoustic Waveform Classification**  
-> Container metadata tags in multi-audio releases (e.g., `und`, generic titles) are frequently untrustworthy or missing. `kikoe` ignores container tags and classifies spoken language directly from raw audio waveforms across 107 languages using deep neural acoustic embeddings.
+> Container metadata tags in multi-audio releases (e.g., `und`, generic titles) are frequently untrustworthy, missing, or stripped. `kikoe` ignores container text tags completely and determines the true spoken language directly from raw audio waveforms across 107 languages using deep neural acoustic embeddings.
 
-`kikoe` (聴こえ — *“audible / ability to hear”*) is a high-performance terminal utility and Rust library designed to determine the spoken language of media containers (`.mkv`, `.mp4`, `.webm`) and standalone audio files. By strategically sampling non-contiguous temporal audio slices across a file's duration, filtering out background noise and music, and feeding voiced segments through an optimized ONNX acoustic model, `kikoe` delivers rock-solid spoken language identification in seconds.
+`kikoe` (聴こえ — *“audible / ability to hear”*) is a high-performance terminal utility and Rust library designed to provide **ground-truth spoken language verification** for media containers (`.mkv`, `.mp4`, `.webm`) and audio files.
+
+---
+
+## 🎯 Why kikoe? (The Purpose)
+
+### 1. The Untrusted Metadata Dilemma
+Multi-audio releases across tracker platforms (e.g., 1TamilMV, DUST, scene encoders) regularly bundle 4 to 8 audio streams in diverse regional languages (Tamil, Telugu, Hindi, Malayalam, Kannada, English, Japanese). However, container metadata tags are notoriously broken:
+- **Missing or Undetermined Tags**: Audio streams are frequently labeled as `und` (undetermined) or have generic names like `Audio Track 1`.
+- **Spam & Watermarked Titles**: Track titles are routinely overwritten with release-group spam (e.g., `www.1TamilMV.meme - [AAC2.0 - 64Kbps]`) with zero language hints.
+- **Mislabeled Containers**: Audio streams are often swapped or incorrectly mapped during encoding (e.g., a Telugu dub marked with the `tam` tag).
+
+### 2. Acoustic Truth Over Text Tags
+Automated media pipelines and dub-stripping utilities cannot blindly rely on metadata tags without risking catastrophic data loss (e.g., stripping the original native theatrical track by mistake).
+
+`kikoe` provides an objective, empirical ground truth:
+- **It listens rather than reads**: Instead of trusting text tags, `kikoe` feeds raw audio sound waves through deep neural acoustic embeddings (`voxlingua107`).
+- **Synchronized Dialogue Sampling**: Non-contiguously samples strategic runtime slices avoiding logos, intro music, and credits.
+- **Cross-Track BGM Cancellation**: Correlates streams across the container. When background explosions or soundtracks trigger false positives across all tracks (e.g. `jw` or `la`), `kikoe` discards the music slice and isolates authentic spoken dialogue.
+
+### 3. Purpose & Ecosystem Role
+`kikoe` was built to serve as the core acoustic verification engine across the media automation stack:
+- **Engine for [`dubstrip`](https://github.com/Praveensenpai/dubstrip)**: Enables lossless pruning of secondary dub tracks by identifying the true native theatrical stream, even when all audio tags are `und`.
+- **Engine for [`jpsan`](https://github.com/Praveensenpai/jpsan)**: Accurately identifies authentic Japanese audio streams in raw anime containers for subtitle alignment and sentence mining.
+- **Media Server Curation (Jellyfin / Plex / Radarr)**: Batch-inspects and tags missing language codes in entire media libraries without manual listening.
+- **Standalone Terminal Tool**: Enables videophiles and remuxers to inspect and verify unknown audio tracks in seconds.
 
 ---
 
