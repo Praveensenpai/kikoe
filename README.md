@@ -107,9 +107,9 @@ kikoe detect "Reacher.S04E08.720p.mkv"
 =======================================================================================
 Stream Codec    Channels       Tag    Identified Language      Confidence   Status
 ───────────────────────────────────────────────────────────────────────────────────────
-#0     aac      2.0 Stereo     tam    Tamil (ta)               66.0%        MATCH
+#0     aac      2.0 Stereo     tam    Tamil (ta)               97.6%        MATCH
 #1     aac      2.0 Stereo     tel    Telugu (te)              99.1%        MATCH
-#2     aac      2.0 Stereo     hin    Hindi (hi)               74.9%        MATCH
+#2     aac      2.0 Stereo     hin    Hindi (hi)               87.7%        MATCH
 #3     aac      2.0 Stereo     mal    Malayalam (ml)           98.8%        MATCH
 #4     aac      2.0 Stereo     kan    Kannada (kn)             98.9%        MATCH
 #5     aac      2.0 Stereo     eng    English (en)             99.1%        MATCH

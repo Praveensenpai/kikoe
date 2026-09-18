@@ -8,7 +8,7 @@ pub mod domain;
 pub mod error;
 pub mod infra;
 
-pub use domain::{LidConfig, LidResult, SlicePrediction, StreamInfo};
+pub use domain::{LanguageScore, LidConfig, LidResult, SlicePrediction, StreamInfo};
 pub use error::{KikoeError, Result};
 pub use infra::LanguageRegistry;
 use infra::{AudioSampler, LidModelEngine, MediaProbe};
@@ -240,12 +240,21 @@ impl KikoeEngine {
         }
 
         let mut score_accum: HashMap<String, f32> = HashMap::new();
+        let mut winner_slice_scores: HashMap<String, Vec<f32>> = HashMap::new();
         let mut total_weight = 0.0f32;
 
-        for slice in active_slices {
+        for slice in &active_slices {
+            let pooled_cands = Self::pool_sister_candidates(&slice.candidates);
+            if let Some(top) = pooled_cands.first() {
+                winner_slice_scores
+                    .entry(top.code.clone())
+                    .or_default()
+                    .push(top.confidence);
+            }
+
             let weight = slice.confidence * slice.confidence;
             total_weight += weight;
-            for cand in slice.candidates.iter().take(5) {
+            for cand in pooled_cands.iter().take(5) {
                 *score_accum.entry(cand.code.clone()).or_default() += cand.confidence * weight;
             }
         }
@@ -261,9 +270,40 @@ impl KikoeEngine {
 
         ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        ranked
-            .first()
-            .cloned()
-            .unwrap_or_else(|| ("und".to_string(), 0.0))
+        if let Some((winner_code, _)) = ranked.first() {
+            let conf = if let Some(winning_scores) = winner_slice_scores.get(winner_code) {
+                let sum: f32 = winning_scores.iter().sum();
+                sum / winning_scores.len() as f32
+            } else {
+                ranked[0].1
+            };
+            (winner_code.clone(), conf.min(1.0))
+        } else {
+            ("und".to_string(), 0.0)
+        }
+    }
+
+    /// Pools acoustically identical sister languages (e.g. Hindustani Hindi & Urdu) under the leading class.
+    fn pool_sister_candidates(candidates: &[LanguageScore]) -> Vec<LanguageScore> {
+        let mut pooled = candidates.to_vec();
+        let hi_idx = pooled.iter().position(|c| c.code == "hi");
+        let ur_idx = pooled.iter().position(|c| c.code == "ur");
+
+        if let (Some(h), Some(u)) = (hi_idx, ur_idx) {
+            if pooled[h].confidence >= pooled[u].confidence {
+                pooled[h].confidence += pooled[u].confidence;
+                pooled.remove(u);
+            } else {
+                pooled[u].confidence += pooled[h].confidence;
+                pooled.remove(h);
+            }
+            pooled.sort_by(|a, b| {
+                b.confidence
+                    .partial_cmp(&a.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
+        }
+
+        pooled
     }
 }

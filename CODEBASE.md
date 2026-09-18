@@ -66,7 +66,7 @@ KikoeEngine (src/lib.rs)
   - `LidModelEngine::resolve_model_path() -> Result<PathBuf>`
   - `LidModelEngine::predict_slice(&self, sample: &AudioSample) -> Result<SlicePrediction>`
 
-### `src/lib.rs` (Role: api, Lines: 269)
+### `src/lib.rs` (Role: api, Lines: 309)
 - **Responsibility**: Public crate interface, unified multi-track correlation, and temporal voting aggregator.
 - **Types**:
   - `pub struct KikoeEngine { config: LidConfig, model: LidModelEngine }`
