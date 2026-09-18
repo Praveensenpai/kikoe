@@ -21,7 +21,7 @@ pub struct LidConfig {
 impl Default for LidConfig {
     fn default() -> Self {
         Self {
-            sample_count: 6,
+            sample_count: 10,
             clip_duration_secs: 6.0,
             min_confidence: 0.60,
             silence_threshold_rms: 0.020,

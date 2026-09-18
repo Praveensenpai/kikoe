@@ -16,7 +16,7 @@ KikoeEngine (src/lib.rs)
 ```
 
 ## 2. Global Constraints & Architecture Patterns
-- **Primary Language & Edition**: Rust 2024 Edition (`kikoe = "0.1.0"`)
+- **Primary Language & Edition**: Rust 2024 Edition (`kikoe = "0.2.0"`)
 - **Architectural Paradigm**: Role-based domain architecture (`domain/`, `infra/`, `cli/`, root `lib.rs` and `main.rs`)
 - **Hard Constraints**: <400 lines/file, <60 lines/fn, zero production `unwrap()`/`expect()`, 0 warnings (`-D warnings`).
 - **Dependencies**: `ort` (ONNX Runtime), `clap`, `serde`, `serde_json`, `thiserror`.
@@ -66,8 +66,8 @@ KikoeEngine (src/lib.rs)
   - `LidModelEngine::resolve_model_path() -> Result<PathBuf>`
   - `LidModelEngine::predict_slice(&self, sample: &AudioSample) -> Result<SlicePrediction>`
 
-### `src/lib.rs` (Role: api, Lines: 156)
-- **Responsibility**: Public crate interface and temporal voting aggregator.
+### `src/lib.rs` (Role: api, Lines: 269)
+- **Responsibility**: Public crate interface, unified multi-track correlation, and temporal voting aggregator.
 - **Types**:
   - `pub struct KikoeEngine { config: LidConfig, model: LidModelEngine }`
 - **Functions**:
@@ -75,7 +75,8 @@ KikoeEngine (src/lib.rs)
   - `KikoeEngine::with_config(config: LidConfig) -> Result<Self>`
   - `KikoeEngine::inspect_streams<P: AsRef<Path>>(path: P) -> Result<Vec<StreamInfo>>`
   - `KikoeEngine::detect_stream_language<P: AsRef<Path>>(&self, path: P, stream_index: usize) -> Result<LidResult>`
+  - `KikoeEngine::detect_all_streams<P: AsRef<Path>>(&self, path: P) -> Result<Vec<LidResult>>`
   - `KikoeEngine::calculate_sampling_timestamps(duration_secs: f64, count: usize) -> Vec<f64>`
 
-### `src/cli/args.rs` & `src/main.rs` (Role: cli, Lines: 167)
-- **Responsibility**: Command-line interface with `detect` and `inspect` subcommands.
+### `src/cli/args.rs` & `src/main.rs` (Role: cli, Lines: 241)
+- **Responsibility**: Command-line interface supporting unified multi-track analysis and single-track inspection.

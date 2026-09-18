@@ -10,7 +10,8 @@ pub mod infra;
 
 pub use domain::{LidConfig, LidResult, SlicePrediction, StreamInfo};
 pub use error::{KikoeError, Result};
-use infra::{AudioSampler, LanguageRegistry, LidModelEngine, MediaProbe};
+pub use infra::LanguageRegistry;
+use infra::{AudioSampler, LidModelEngine, MediaProbe};
 
 /// Primary high-level engine for inspecting containers and classifying audio track languages.
 pub struct KikoeEngine {
@@ -84,6 +85,118 @@ impl KikoeEngine {
             slices,
             voiced_ratio,
         })
+    }
+
+    /// Analyzes all audio streams in a media container using synchronized temporal slices.
+    /// Employs cross-track correlation to suppress shared background music (BGM) noise.
+    pub fn detect_all_streams<P: AsRef<Path>>(&self, path: P) -> Result<Vec<LidResult>> {
+        let streams = Self::inspect_streams(&path)?;
+        if streams.is_empty() {
+            return Err(KikoeError::StreamNotFound(0));
+        }
+
+        let duration = MediaProbe::probe_duration(&path)?;
+        let timestamps = Self::calculate_sampling_timestamps(duration, self.config.sample_count);
+
+        let mut raw_stream_slices = Vec::with_capacity(streams.len());
+        for s in &streams {
+            let slices = self.sample_stream_slices(&path, s.index, &timestamps);
+            raw_stream_slices.push((s.index, slices));
+        }
+
+        let bgm_noise_flags = Self::identify_bgm_timestamps(&raw_stream_slices, timestamps.len());
+        let mut results = Vec::with_capacity(streams.len());
+
+        for (stream_index, slices) in raw_stream_slices {
+            let mut valid_slices = Vec::new();
+            let mut voiced_count = 0;
+
+            for (idx, pred_opt) in slices.into_iter().enumerate() {
+                if let Some(pred) = pred_opt {
+                    voiced_count += 1;
+                    if !bgm_noise_flags[idx] {
+                        valid_slices.push(pred);
+                    }
+                }
+            }
+
+            if valid_slices.is_empty() {
+                return Err(KikoeError::InsufficientSpeech);
+            }
+
+            let voiced_ratio = voiced_count as f32 / timestamps.len() as f32;
+            let (winner_code, overall_confidence) = Self::aggregate_votes(&valid_slices);
+            let winner_name = LanguageRegistry::name_for_code(&winner_code);
+
+            results.push(LidResult {
+                stream_index,
+                winner_code,
+                winner_name,
+                overall_confidence,
+                duration_secs: duration,
+                slices: valid_slices,
+                voiced_ratio,
+            });
+        }
+
+        Ok(results)
+    }
+
+    /// Samples slices for a single stream across predetermined timestamps.
+    fn sample_stream_slices<P: AsRef<Path>>(
+        &self,
+        path: P,
+        stream_index: usize,
+        timestamps: &[f64],
+    ) -> Vec<Option<SlicePrediction>> {
+        timestamps
+            .iter()
+            .map(|&ts| {
+                AudioSampler::extract_slice(
+                    &path,
+                    stream_index,
+                    ts,
+                    self.config.clip_duration_secs,
+                    self.config.silence_threshold_rms,
+                )
+                .ok()
+                .filter(|sample| sample.is_speech)
+                .and_then(|sample| self.model.predict_slice(&sample).ok())
+            })
+            .collect()
+    }
+
+    /// Detects shared soundtrack music by finding timestamps where >= 60% of streams agree.
+    fn identify_bgm_timestamps(
+        stream_slices: &[(usize, Vec<Option<SlicePrediction>>)],
+        total_timestamps: usize,
+    ) -> Vec<bool> {
+        let mut bgm_flags = vec![false; total_timestamps];
+        if stream_slices.len() < 3 {
+            return bgm_flags;
+        }
+
+        for ts_idx in 0..total_timestamps {
+            let mut lang_counts: HashMap<String, usize> = HashMap::new();
+            let mut voiced_count = 0;
+
+            for (_, slices) in stream_slices {
+                if let Some(pred) = &slices[ts_idx] {
+                    voiced_count += 1;
+                    *lang_counts.entry(pred.top_language.clone()).or_default() += 1;
+                }
+            }
+
+            if voiced_count >= 3 {
+                for count in lang_counts.values() {
+                    if (*count as f32 / voiced_count as f32) >= 0.60 {
+                        bgm_flags[ts_idx] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        bgm_flags
     }
 
     /// Calculates strategically placed timestamps avoiding intro and outro dead zones.

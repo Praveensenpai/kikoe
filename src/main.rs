@@ -1,11 +1,11 @@
 //! CLI entrypoint for kikoe binary.
 
-use clap::Parser;
 use std::process::ExitCode;
 
+use clap::Parser;
 use kikoe::cli::{Cli, Commands, DetectArgs, InspectArgs};
 use kikoe::domain::LidConfig;
-use kikoe::{KikoeEngine, Result};
+use kikoe::{KikoeEngine, LanguageRegistry, Result};
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
@@ -31,15 +31,24 @@ fn handle_detect(args: DetectArgs) -> Result<()> {
     };
     let engine = KikoeEngine::with_config(config)?;
 
+    if let (Some(track_idx), false) = (args.track, args.all) {
+        return handle_single_stream_detect(&engine, &args, track_idx);
+    }
+
+    handle_multi_stream_detect(&engine, &args)
+}
+
+fn handle_single_stream_detect(
+    engine: &KikoeEngine,
+    args: &DetectArgs,
+    track: usize,
+) -> Result<()> {
     if !args.json {
-        println!(
-            "🎧 聴こえ (kikoe) — Analyzing audio stream #{}...",
-            args.track
-        );
+        println!("🎧 聴こえ (kikoe) — Analyzing audio stream #{track}...");
         println!("📁 Target: {}", args.path.display());
     }
 
-    let result = engine.detect_stream_language(&args.path, args.track)?;
+    let result = engine.detect_stream_language(&args.path, track)?;
 
     if args.json {
         let json_str = serde_json::to_string_pretty(&result)?;
@@ -72,6 +81,67 @@ fn handle_detect(args: DetectArgs) -> Result<()> {
         );
     }
     println!("=======================================================");
+    Ok(())
+}
+
+fn handle_multi_stream_detect(engine: &KikoeEngine, args: &DetectArgs) -> Result<()> {
+    let streams = KikoeEngine::inspect_streams(&args.path)?;
+    if !args.json {
+        println!(
+            "🎧 聴こえ (kikoe) — Unified Multi-Track Analysis ({} audio streams)...",
+            streams.len()
+        );
+        println!("📁 Target: {}", args.path.display());
+    }
+
+    let results = engine.detect_all_streams(&args.path)?;
+
+    if args.json {
+        let json_str = serde_json::to_string_pretty(&results)?;
+        println!("{json_str}");
+        return Ok(());
+    }
+
+    println!(
+        "\n======================================================================================="
+    );
+    println!(
+        "{:<6} {:<8} {:<14} {:<6} {:<24} {:<12} Status",
+        "Stream", "Codec", "Channels", "Tag", "Identified Language", "Confidence"
+    );
+    println!(
+        "───────────────────────────────────────────────────────────────────────────────────────"
+    );
+
+    for (s, res) in streams.iter().zip(results.iter()) {
+        let tag = s.metadata_lang.as_deref().unwrap_or("und");
+        let ch_desc = if s.channels == 2 {
+            "2.0 Stereo"
+        } else if s.channels == 6 {
+            "5.1 Surround"
+        } else {
+            "Other"
+        };
+        let lang_desc = format!("{} ({})", res.winner_name, res.winner_code);
+        let conf_desc = format!("{:.1}%", res.overall_confidence * 100.0);
+        let tag_name = LanguageRegistry::name_for_code(tag);
+        let status =
+            if tag_name != "Unknown" && tag_name.to_lowercase() == res.winner_name.to_lowercase() {
+                "MATCH"
+            } else if tag == "und" {
+                "RESOLVED"
+            } else {
+                "MISMATCH"
+            };
+
+        println!(
+            "#{:<5} {:<8} {:<14} {:<6} {:<24} {:<12} {}",
+            res.stream_index, s.codec_name, ch_desc, tag, lang_desc, conf_desc, status
+        );
+    }
+    println!(
+        "======================================================================================="
+    );
     Ok(())
 }
 

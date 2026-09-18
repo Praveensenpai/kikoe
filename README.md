@@ -92,9 +92,33 @@ install -Dm 755 target/release/kikoe ~/.local/bin/kikoe
 
 ## 💻 CLI Usage & Workflows
 
-### 1. Identify Track Spoken Language
+### 1. Unified Multi-Track Analysis (All Streams)
 
-Detect the actual spoken language of an audio stream from raw acoustic sound waves:
+Analyze all audio streams simultaneously using synchronized temporal slices with cross-track BGM cancellation:
+
+```bash
+kikoe detect "Reacher.S04E08.720p.mkv"
+```
+
+```text
+🎧 聴こえ (kikoe) — Unified Multi-Track Analysis (6 audio streams)...
+📁 Target: Reacher.S04E08.720p.mkv
+
+=======================================================================================
+Stream Codec    Channels       Tag    Identified Language      Confidence   Status
+───────────────────────────────────────────────────────────────────────────────────────
+#0     aac      2.0 Stereo     tam    Tamil (ta)               66.0%        MATCH
+#1     aac      2.0 Stereo     tel    Telugu (te)              99.1%        MATCH
+#2     aac      2.0 Stereo     hin    Hindi (hi)               74.9%        MATCH
+#3     aac      2.0 Stereo     mal    Malayalam (ml)           98.8%        MATCH
+#4     aac      2.0 Stereo     kan    Kannada (kn)             98.9%        MATCH
+#5     aac      2.0 Stereo     eng    English (en)             99.1%        MATCH
+=======================================================================================
+```
+
+### 2. Single Stream Detailed Drill-Down
+
+Inspect per-slice predictions and energy metrics for an individual stream:
 
 ```bash
 kikoe detect "Reacher.S04E08.720p.mkv" --track 0
@@ -107,13 +131,12 @@ kikoe detect "Reacher.S04E08.720p.mkv" --track 0
 =======================================================
 🎯 Language: Tamil (ta) — Confidence: 99.3%
 ⏱️  Media Duration: 3463.5s
-📊 Slices Evaluated: 6 (Voiced: 83%)
+📊 Slices Evaluated: 10 (Voiced: 100%)
 ───────────────────────────────────────────────────────
   [1] Offset:  519.5s | Top: te  ( 95.6%) | RMS: 0.0511
-  [2] Offset: 1489.3s | Top: ta  ( 99.3%) | RMS: 0.0929
-  [3] Offset: 1974.2s | Top: yi  ( 19.4%) | RMS: 0.1606
-  [4] Offset: 2459.1s | Top: nn  ( 13.9%) | RMS: 0.1283
-  [5] Offset: 2943.9s | Top: jw  ( 62.4%) | RMS: 0.0813
+  [2] Offset:  788.9s | Top: ta  ( 95.5%) | RMS: 0.0828
+  ...
+  [9] Offset: 2674.6s | Top: ta  ( 99.6%) | RMS: 0.0324
 =======================================================
 ```
 

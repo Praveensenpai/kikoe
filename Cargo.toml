@@ -1,6 +1,6 @@
 [package]
 name = "kikoe"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "⛩️ 聴こえ (kikoe) — Ultra-fast temporal multi-slice audio language identification in pure Rust"
 license = "MIT"

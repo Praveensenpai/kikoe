@@ -27,12 +27,16 @@ pub struct DetectArgs {
     /// Path to media container file (mkv, mp4, webm, etc.).
     pub path: PathBuf,
 
-    /// Zero-based audio stream index to analyze.
-    #[arg(short = 't', long = "track", default_value_t = 0)]
-    pub track: usize,
+    /// Zero-based audio stream index to analyze (omit or use --all to analyze all streams).
+    #[arg(short = 't', long = "track")]
+    pub track: Option<usize>,
+
+    /// Analyze all audio streams in the container simultaneously.
+    #[arg(short = 'a', long = "all")]
+    pub all: bool,
 
     /// Number of temporal slices to sample across the file.
-    #[arg(short = 's', long = "samples", default_value_t = 6)]
+    #[arg(short = 's', long = "samples", default_value_t = 10)]
     pub samples: usize,
 
     /// Duration of each temporal slice in seconds.
